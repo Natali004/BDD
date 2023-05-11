@@ -1,38 +1,34 @@
 package ru.netology.page;
 
-import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.SelenideElement;
+import org.openqa.selenium.Keys;
+import ru.netology.data.DataHelper;
 
-import static com.codeborne.selenide.Selectors.byText;
 import static com.codeborne.selenide.Selectors.withText;
 import static com.codeborne.selenide.Selenide.$;
 
 public class MoneyTransfer {
+    private SelenideElement addMoneyHeading = $(withText("Пополнение карты"));
+    private SelenideElement totField = $(".money-input .input__control");
+    private SelenideElement amountField = $("[data-test-id='amount'] [type='text']");
+    private SelenideElement sourceCardField = $("[data-test-id='from'] .input__control");
+    private SelenideElement addFundsButton = $("[data-test-id='action-transfer'] .button__text");
+    private SelenideElement errorMessage = $("[data-test-id=error-notification]");
 
-    private SelenideElement transferPage = $(withText("Пополнение карты"));
-    private SelenideElement transferAmount = $("[data-test-id=amount] input");
-    private SelenideElement transferFrom = $("[data-test-id=from] input");
-    private SelenideElement transferButton = $(byText("Пополнить"));
-    private SelenideElement errorMessage = $(withText("Ошибка"));
-
-    public void moneyTransferVisible() {
-        transferPage.shouldBe(Condition.visible);
+    public MoneyTransfer() {
     }
 
-    public void setTransferAmount(int sum) {
-        transferAmount.setValue(String.valueOf(sum));
+    public void transaction(String value, String source) {
+        totField.sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE, value.replace(" ", ""));
+
+        sourceCardField.sendKeys(Keys.chord(Keys.SHIFT, Keys.HOME), Keys.BACK_SPACE, source.replace(" ", ""));
+        addFundsButton.click();
     }
 
-    public void setFrom(String numberCard) {
-        transferFrom.setValue(numberCard);
+    public DashboardPage validTransfer(String amountTransfer, DataHelper.InfoCard infoCard) {
+        amountField.setValue(amountTransfer);
+        sourceCardField.setValue(infoCard.getCardNumber());
+        addFundsButton.click();
+        return new DashboardPage();
     }
-
-    public void doTransfer() {
-        transferButton.click();
-    }
-
-    public void errorTransfer() {
-        errorMessage.shouldBe(Condition.visible);
-    }
-
 }

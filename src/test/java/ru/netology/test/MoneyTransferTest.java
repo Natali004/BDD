@@ -1,72 +1,80 @@
 package ru.netology.test;
 
-import com.codeborne.selenide.Selenide;
 import lombok.val;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.netology.data.DataHelper;
-import ru.netology.page.DashboardPage;
 import ru.netology.page.LoginPage;
 
 import static com.codeborne.selenide.Selenide.open;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static ru.netology.data.DataHelper.generateValidAmount;
 
 public class MoneyTransferTest {
-    private int amountValid = 500;
-    private int amountInvalid = 30000;
-
-    private DashboardPage shouldOpenDashboardPage() {
+    @Test
+    void shouldTransferMoneyBetweenOwnCardsV1() {
         open("http://localhost:9999");
-        Selenide.clearBrowserCookies();
-        Selenide.clearBrowserLocalStorage();
-        val loginPage = new LoginPage();
-        val authInfo = DataHelper.getAuthInfo();
-        val verificationPage = loginPage.validLogin(authInfo);
-        val verificationCode = DataHelper.getVerificationCodeFor(authInfo);
-        return verificationPage.validVerify(verificationCode);
+        var loginPage = new LoginPage();
+        var authInfo = DataHelper.getAuthInfo();
+        var verificationPage = loginPage.validLogin(authInfo);
+        var verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        var dashboardPage = verificationPage.validVerify(verificationCode);
+        var infoCardFirst = DataHelper.getFirstInfoCard();
+        var infoCardSecond = DataHelper.getSecondInfoCard();
+        var firstDashboardPage = dashboardPage.getDashboardPage(infoCardFirst);
+        var secondDashboardPage = dashboardPage.getDashboardPage(infoCardSecond);
+        var amount = generateValidAmount(firstDashboardPage);
+        var expectedFirstDashboardPage = firstDashboardPage + amount;
+        var expectedSecondDashboardPage = secondDashboardPage - amount;
+        var transactionPage = dashboardPage.selectCardToTransfer(infoCardFirst);
+        transactionPage.validTransfer(String.valueOf(amount), infoCardSecond);
+
+        assertEquals(expectedFirstDashboardPage, dashboardPage.getDashboardPage(infoCardFirst));
+        assertEquals(expectedSecondDashboardPage, dashboardPage.getDashboardPage(infoCardSecond));
+
     }
 
     @Test
-    void shouldTransferMoneyFromCard2toCard1() {
-        DashboardPage dashboardPage = shouldOpenDashboardPage();
-        dashboardPage.dashboardPageVisible();
-        int expected1 = dashboardPage.getBalanceCard1() + amountValid;
-        int expected2 = dashboardPage.getBalanceCard2() - amountValid;
-        val moneyTransfer = dashboardPage.card1();
-        moneyTransfer.moneyTransferVisible();
-        moneyTransfer.setTransferAmount(amountValid);
-        moneyTransfer.setFrom(DataHelper.getCardNumber2());
-        moneyTransfer.doTransfer();
-        assertEquals(expected1, dashboardPage.getBalanceCard1());
-        assertEquals(expected2, dashboardPage.getBalanceCard2());
+    void shouldTransferMoneyBetweenOwnCardsV2() {
+
+        open("http://localhost:9999");
+        var loginPage = new LoginPage();
+        var authInfo = DataHelper.getAuthInfo();
+        var verificationPage = loginPage.validLogin(authInfo);
+        var verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        val dashboardPage = verificationPage.validVerify(verificationCode);
+        var infoCardSecond = DataHelper.getSecondInfoCard();
+        var infoCardFirst = DataHelper.getFirstInfoCard();
+        val secondDashboardPage = dashboardPage.getDashboardPage(infoCardSecond);
+        val firstDashboardPage = dashboardPage.getDashboardPage(infoCardFirst);
+        val amount = generateValidAmount(firstDashboardPage);
+        val expectedFirstDashboardPage = firstDashboardPage - amount;
+        val expectedSecondDashboardPage = secondDashboardPage + amount;
+        val transactionPage = dashboardPage.selectCardToTransfer(infoCardSecond);
+        transactionPage.validTransfer(String.valueOf(amount), infoCardFirst);
+
+        assertEquals(expectedSecondDashboardPage, dashboardPage.getDashboardPage(infoCardSecond));
+        assertEquals(expectedFirstDashboardPage, dashboardPage.getDashboardPage(infoCardFirst));
+
     }
 
     @Test
-    void shouldTransferMoneyFromCard1toCard2() {
-        Selenide.clearBrowserCookies();
-        Selenide.clearBrowserLocalStorage();
-        DashboardPage dashboardPage = shouldOpenDashboardPage();
-        dashboardPage.dashboardPageVisible();
-        int expected1 = dashboardPage.getBalanceCard2() + amountValid;
-        int expected2 = dashboardPage.getBalanceCard1() - amountValid;
-        val moneyTransfer = dashboardPage.card2();
-        moneyTransfer.moneyTransferVisible();
-        moneyTransfer.setTransferAmount(amountValid);
-        moneyTransfer.setFrom(DataHelper.getCardNumber1());
-        moneyTransfer.doTransfer();
-        assertEquals(expected1, dashboardPage.getBalanceCard2());
-        assertEquals(expected2, dashboardPage.getBalanceCard1());
+    void shouldFailToAuthorizeWithInvalidVerificationCode() {
+        open("http://localhost:9999");
+        var loginPage = new LoginPage();
+        var authInfo = DataHelper.getAuthInfo();
+        var verificationPage = loginPage.validLogin(authInfo);
+        var badVerificationCode = DataHelper.getOtherVerificationCodeFor(authInfo);
+        verificationPage.invalidVerify(badVerificationCode);
     }
 
     @Test
-    void shouldTransferInvalidAmountFromCard2toCard1() {
-        DashboardPage dashboardPage = shouldOpenDashboardPage();
-        dashboardPage.dashboardPageVisible();
-        val moneyTransfer = dashboardPage.card1();
-        moneyTransfer.moneyTransferVisible();
-        moneyTransfer.setTransferAmount(amountInvalid);
-        moneyTransfer.setFrom(DataHelper.getCardNumber2());
-        moneyTransfer.doTransfer();
-        moneyTransfer.errorTransfer();
+    void shouldFailToAuthorizeWithInvalidVerificationCode2() {
+        open("http://localhost:9999");
+        var loginPage = new LoginPage();
+        var authInfo = DataHelper.getOtherAuthInfo();
+        var verificationPage = loginPage.validLogin(authInfo);
+        var badVerificationCode = DataHelper.getOtherVerificationCodeFor(authInfo);
+        verificationPage.invalidVerify(badVerificationCode);
     }
+
 }
