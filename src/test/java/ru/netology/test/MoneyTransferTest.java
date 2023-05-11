@@ -1,66 +1,72 @@
 package ru.netology.test;
 
+import com.codeborne.selenide.Selenide;
 import lombok.val;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.netology.data.DataHelper;
-import ru.netology.page.*;
+import ru.netology.page.DashboardPage;
+import ru.netology.page.LoginPage;
 
+import static com.codeborne.selenide.Selenide.open;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class MoneyTransferTest {
+public class MoneyTransferTest {
+    private int amountValid = 500;
+    private int amountInvalid = 30000;
 
-    @BeforeEach
-    void setup() {
-        LoginPage loginPage = new LoginPage();
-        DataHelper.AuthInfo authInfo = DataHelper.getAuthInfo();
-        VerificationPage verificationPage = loginPage.validLogin(authInfo);
-        DataHelper.VerificationCode verificationCode = DataHelper.getVerificationCodeFor(authInfo);
-        DashboardPage dashboardPage = verificationPage.validVerify(verificationCode);
-    }
-
-    @AfterEach
-    void asserting() {
-        val dashboardPage = new DashboardPage();
-        int firstCardBalance = dashboardPage.getCardBalance(DataHelper.firstCard().getCardId());
-        int secondCardBalance = dashboardPage.getCardBalance(DataHelper.secondCard().getCardId());
-        if (firstCardBalance != secondCardBalance) {
-            int average = (firstCardBalance - secondCardBalance) / 2;
-            if (firstCardBalance < secondCardBalance) {
-                val transferPage = dashboardPage.topUpCard(1);
-                transferPage.transfer(Integer.toString(average), DataHelper.secondCard().getCardNumber());
-            }
-            else {
-                val transferPage = dashboardPage.topUpCard(2);
-                transferPage.transfer(Integer.toString(average), DataHelper.firstCard().getCardNumber());
-            }
-        }
+    private DashboardPage shouldOpenDashboardPage() {
+        open("http://localhost:9999");
+        Selenide.clearBrowserCookies();
+        Selenide.clearBrowserLocalStorage();
+        val loginPage = new LoginPage();
+        val authInfo = DataHelper.getAuthInfo();
+        val verificationPage = loginPage.validLogin(authInfo);
+        val verificationCode = DataHelper.getVerificationCodeFor(authInfo);
+        return verificationPage.validVerify(verificationCode);
     }
 
     @Test
-    void shouldTopUpFirstCardTest() {
-        val dashboardPage = new DashboardPage();
-        int expectedFirstCardBalance = dashboardPage.getCardBalance(DataHelper.firstCard().getCardId()) + 1;
-        int expectedSecondCardBalance = dashboardPage.getCardBalance(DataHelper.secondCard().getCardId()) - 1;
-        val transferPage = dashboardPage.topUpCard(1);
-        transferPage.transfer("1", DataHelper.secondCard().getCardNumber());
-        int firstCardBalance = dashboardPage.getCardBalance(DataHelper.firstCard().getCardId());
-        int secondCardBalance = dashboardPage.getCardBalance(DataHelper.secondCard().getCardId());
-        assertEquals(expectedFirstCardBalance, firstCardBalance);
-        assertEquals(expectedSecondCardBalance, secondCardBalance);
+    void shouldTransferMoneyFromCard2toCard1() {
+        DashboardPage dashboardPage = shouldOpenDashboardPage();
+        dashboardPage.dashboardPageVisible();
+        int expected1 = dashboardPage.getBalanceCard1() + amountValid;
+        int expected2 = dashboardPage.getBalanceCard2() - amountValid;
+        val moneyTransfer = dashboardPage.card1();
+        moneyTransfer.moneyTransferVisible();
+        moneyTransfer.setTransferAmount(amountValid);
+        moneyTransfer.setFrom(DataHelper.getCardNumber2());
+        moneyTransfer.doTransfer();
+        assertEquals(expected1, dashboardPage.getBalanceCard1());
+        assertEquals(expected2, dashboardPage.getBalanceCard2());
     }
 
     @Test
-    void shouldTopUpSecondCardTest() {
-        val dashboardPage = new DashboardPage();
-        int expectedFirstCardBalance = 0;
-        int expectedSecondCardBalance = 20000;
-        val transferPage = dashboardPage.topUpCard(2);
-        transferPage.transfer("10000", DataHelper.firstCard().getCardNumber());
-        int firstCardBalance = dashboardPage.getCardBalance(DataHelper.firstCard().getCardId());
-        int secondCardBalance = dashboardPage.getCardBalance(DataHelper.secondCard().getCardId());
-        assertEquals(expectedFirstCardBalance, firstCardBalance);
-        assertEquals(expectedSecondCardBalance, secondCardBalance);
+    void shouldTransferMoneyFromCard1toCard2() {
+        Selenide.clearBrowserCookies();
+        Selenide.clearBrowserLocalStorage();
+        DashboardPage dashboardPage = shouldOpenDashboardPage();
+        dashboardPage.dashboardPageVisible();
+        int expected1 = dashboardPage.getBalanceCard2() + amountValid;
+        int expected2 = dashboardPage.getBalanceCard1() - amountValid;
+        val moneyTransfer = dashboardPage.card2();
+        moneyTransfer.moneyTransferVisible();
+        moneyTransfer.setTransferAmount(amountValid);
+        moneyTransfer.setFrom(DataHelper.getCardNumber1());
+        moneyTransfer.doTransfer();
+        assertEquals(expected1, dashboardPage.getBalanceCard2());
+        assertEquals(expected2, dashboardPage.getBalanceCard1());
+    }
+
+    @Test
+    void shouldTransferInvalidAmountFromCard2toCard1() {
+        DashboardPage dashboardPage = shouldOpenDashboardPage();
+        dashboardPage.dashboardPageVisible();
+        val moneyTransfer = dashboardPage.card1();
+        moneyTransfer.moneyTransferVisible();
+        moneyTransfer.setTransferAmount(amountInvalid);
+        moneyTransfer.setFrom(DataHelper.getCardNumber2());
+        moneyTransfer.doTransfer();
+        moneyTransfer.errorTransfer();
     }
 }
